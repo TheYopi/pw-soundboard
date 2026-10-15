@@ -1,0 +1,16 @@
+#!/bin/sh
+# AppImage entry point.
+#
+# libpipewire is intentionally NOT bundled: the client library must match the PipeWire
+# daemon running on the host, so the system copy (pacman -S pipewire) is always used.
+HERE="$(dirname "$(readlink -f "$0")")"
+
+if ! ldconfig -p 2>/dev/null | grep -q 'libpipewire-0.3.so.0' && \
+   [ ! -e /usr/lib/libpipewire-0.3.so.0 ] && [ ! -e /usr/lib64/libpipewire-0.3.so.0 ]; then
+    msg="PW Soundboard needs PipeWire. Install it with: sudo pacman -S pipewire pipewire-pulse wireplumber"
+    echo "$msg" >&2
+    command -v notify-send >/dev/null 2>&1 && notify-send "PW Soundboard" "$msg"
+    exit 1
+fi
+
+exec "$HERE/usr/bin/pw-soundboard" "$@"

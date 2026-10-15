@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PW Soundboard
+GenericName=Soundboard
+Comment=Play sounds to your speakers and a virtual microphone (PipeWire)
+Exec=pw-soundboard
+Icon=pw-soundboard
+Terminal=false
+Categories=AudioVideo;Audio;Utility;
+Keywords=soundboard;pipewire;microphone;discord;meme;sfx;
+StartupWMClass=pw-soundboard

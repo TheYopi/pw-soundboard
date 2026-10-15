@@ -1,0 +1,10 @@
+{
+    "plugin.name": "PW Soundboard",
+    "actions.play-sound.name": "Play Sound",
+    "actions.play-sound.sound": "Sound",
+    "actions.play-sound.choose": "Choose a sound…",
+    "actions.play-sound.show-title": "Show title",
+    "actions.play-sound.not-running": "PW Soundboard is not running",
+    "actions.play-sound.missing": "(missing) ",
+    "actions.stop-all.name": "Stop All Sounds"
+}

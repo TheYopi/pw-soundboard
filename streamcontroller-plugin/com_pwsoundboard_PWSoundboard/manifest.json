@@ -1,0 +1,18 @@
+{
+    "version": "0.1.0",
+    "thumbnail": "store/Thumbnail.png",
+    "id": "com_pwsoundboard_PWSoundboard",
+    "name": "PW Soundboard",
+    "github": "https://github.com/TheYopi/pw-soundboard",
+    "descriptions": {
+        "en_US": "Play sounds from PW Soundboard. Buttons show the sound's thumbnail and playback progress; all audio settings stay in the soundboard app."
+    },
+    "short-descriptions": {
+        "en_US": "Trigger PW Soundboard sounds"
+    },
+    "tags": ["Audio"],
+    "minimum-app-version": "1.5.0-beta.1",
+    "app-version": "1.5.0-beta.16",
+    "description": "Play sounds from PW Soundboard.",
+    "short-description": "Trigger PW Soundboard sounds"
+}
