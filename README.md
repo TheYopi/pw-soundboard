@@ -4,6 +4,8 @@
 
 # PW Soundboard
 
+<img width="2560" height="1440" alt="Screenshot from 2026-10-17 06-55-39" src="https://github.com/user-attachments/assets/cf43ccc7-aee5-483c-b7a3-79035da2864a" />
+
 A soundboard for Linux. Click a tile and the sound plays **in your headphones** and **through
 your microphone**, so your friends on Discord, viewers on OBS or people in a browser call hear it
 too.
