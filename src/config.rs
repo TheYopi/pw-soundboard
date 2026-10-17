@@ -19,6 +19,9 @@ pub struct Sound {
     /// Per-sound volume, 0.0 ..= 2.0 (1.0 = unchanged).
     #[serde(default = "one")]
     pub volume: f32,
+    /// Global keyboard shortcut, e.g. "Super+Shift+F9".
+    #[serde(default)]
+    pub shortcut: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +53,12 @@ pub struct Settings {
     pub close_to_tray: bool,
     /// Start without opening the window (only in the tray).
     pub start_hidden: bool,
+    /// Global keyboard shortcut that stops all sounds.
+    pub stop_all_shortcut: Option<String>,
+    /// Color scheme: "" follows the desktop (qt6ct/qt5ct), "builtin", or a scheme name.
+    pub theme: String,
+    /// Angular (notched) shapes instead of rounded ones.
+    pub angular: bool,
 }
 
 fn one() -> f32 {
@@ -72,6 +81,9 @@ impl Default for Settings {
             tile_size: 128.0,
             close_to_tray: true,
             start_hidden: false,
+            stop_all_shortcut: None,
+            theme: String::new(),
+            angular: true,
         }
     }
 }

@@ -2,8 +2,10 @@ mod app;
 mod audio;
 mod config;
 mod decode;
+mod hotkeys;
 mod remote;
 mod shell;
+mod theme;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -47,6 +49,11 @@ fn run_window(app: &Rc<RefCell<app::SoundboardApp>>) -> eframe::Result {
 }
 
 fn main() -> eframe::Result {
+    // `--play 3` etc. (used by keyboard shortcuts) talk to the running app and exit right away.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if let Some(code) = remote::run_cli(&args) {
+        std::process::exit(code);
+    }
     // Launching again while running (e.g. in the tray) just shows the existing window.
     if remote::show_existing_instance() {
         return Ok(());

@@ -11,6 +11,8 @@ too.
 - Works with any app that uses a microphone, with no extra plugins or virtual cables.
 - Your voice and the sounds go out together.
 - Runs quietly in the system tray.
+- Global keyboard shortcuts for your favourite sounds.
+- Matches your desktop's colors, and follows them live when you switch themes.
 - Optional: trigger sounds from an Elgato Stream Deck through
   [StreamController](https://github.com/StreamController/StreamController).
 
@@ -31,6 +33,21 @@ Ubuntu 22.10+, CachyOS, and others) do.
 3. Double-click it to start.
 
 The window opens with an empty board, and a PWSB icon appears in your system tray.
+
+### Automatic updates with Gear Lever (recommended)
+
+[Gear Lever](https://flathub.org/apps/it.mijorus.gearlever) installs AppImages as normal apps
+(with a menu entry) and keeps them up to date. Open the downloaded AppImage with Gear Lever and
+add it to your app menu. The update settings are filled in automatically; if
+you ever need to enter them yourself, under **Update management** use:
+
+| Field | Value |
+|---|---|
+| Username/Repo | `TheYopi/pw-soundboard` |
+| Release file name | `PW_Soundboard-*-x86_64.AppImage.zsync` |
+
+Gear Lever then shows when a new version is available and only downloads the parts that
+changed.
 
 ---
 
@@ -100,6 +117,54 @@ The status bar at the bottom shows whether an app is currently listening.
 
 ---
 
+## Keyboard shortcuts
+
+Give any sound a key combination, like `Ctrl+Alt+1`. It works on any desktop, even while you're
+in a game or another app and the soundboard is hidden in the tray.
+
+### One-time setup
+
+Shortcuts need permission to read the keyboard. Open a terminal, run this once, then **log out
+and back in**:
+
+```bash
+sudo usermod -aG input $USER
+```
+
+> This gives programs you run permission to read keyboard input. PW Soundboard only reacts to
+> the combinations you set and doesn't record or store anything else.
+
+### Setting a shortcut
+
+1. Click a sound and find **Keyboard shortcut** in the editor.
+2. Click **⌨ Set shortcut**.
+3. Hold `Ctrl`, `Alt`, `Shift` and/or `Super` and press a key. `Esc` cancels.
+
+That's it. To change or remove it, use **✏ Change** or **✖** next to the shortcut. A shortcut
+for **Stop all sounds** is under **⚙ Routing → Behaviour**.
+
+Good to know:
+- Letters, numbers and other typing keys need at least one modifier, so they don't fire while
+  you type. Keys like `F9` or media keys can be used on their own.
+- The key press still reaches the app you're in. Pick combinations that app doesn't use.
+
+---
+
+## Appearance
+
+Under **⚙ Settings → Appearance**:
+
+- **Colors:** by default the soundboard uses your desktop's Qt color scheme (the files in
+  `~/.config/qt6ct/colors` or `~/.config/qt5ct/colors`, which many desktop themes and shells
+  generate). When your theme changes, the soundboard recolors itself within a second. You can
+  also pick a specific scheme, or the built-in colors.
+- **Shape:** *Angular* (cut corners, for that sci-fi look) or *Rounded*.
+- **Tile size:** make the sound tiles bigger or smaller.
+
+The app uses your system's default fonts.
+
+---
+
 ## Running in the background (tray)
 
 Closing the window doesn't quit the app. It keeps running in the system tray, and your sounds
@@ -149,6 +214,10 @@ OBS records both your microphone and your desktop audio, so the sound arrives tw
 device that OBS records as desktop audio. If you use EasyEffects, also add *PW Soundboard* to
 its list of excluded apps.
 
+**Keyboard shortcuts don't do anything.**
+Open a sound's editor: under **Keyboard shortcut** the app tells you what's missing. Usually
+it's the one-time setup (`sudo usermod -aG input $USER`) or logging out and back in afterwards.
+
 **The file picker doesn't open.**
 The file picker needs `xdg-desktop-portal` (installed on almost every desktop). You can always
 drag and drop files onto the window instead.
@@ -190,7 +259,11 @@ How it works, briefly:
   feed back.
 - `libpipewire` is deliberately not bundled in the AppImage; it must match the system's PipeWire.
 - A local control socket (`~/.local/share/pw-soundboard/control.sock`, JSON lines) lets other
-  programs list and trigger sounds; the StreamController plugin uses it.
+  programs list and trigger sounds; the StreamController plugin and the command line use it
+  (`--play <number|title>`, `--stop`, `--stop-all`, `--help`).
+- Keyboard shortcuts read the keyboards directly via evdev (`/dev/input`, needs the `input`
+  group), because Wayland apps can't see other windows' keys and the GlobalShortcuts portal isn't
+  available on every compositor. Keys are observed, never grabbed.
 - The tray icon is a StatusNotifierItem (via `ksni`, no GTK).
 
 ```
@@ -201,6 +274,8 @@ src/decode.rs   audio decoding + resampling to 48 kHz stereo
 src/config.rs   settings and library (JSON)
 src/remote.rs   control socket
 src/shell.rs    tray icon, background mode
+src/hotkeys.rs  keyboard shortcuts (evdev listener, hot-plug, recording)
+src/theme.rs    colors from qt5ct/qt6ct schemes (live reload), fonts, shapes
 streamcontroller-plugin/   Stream Deck plugin for StreamController
 ```
 

@@ -9,6 +9,7 @@
 //! * `{"cmd":"list"}` → `{"ok":true,"version":N,"sounds":[{"id","title","thumbnail","state"}]}`
 //! * `{"cmd":"press","id":N}` → behaves exactly like clicking the tile
 //! * `{"cmd":"stop","id":N}`, `{"cmd":"stop_all"}`
+//!   (`press` and `stop` also accept `"title":"…"` instead of an id)
 //! * `{"cmd":"show"}` → opens the window (used when the app is launched a second time)
 //! * `{"cmd":"state"}` → `{"ok":true,"version":N,"playing":{"<id>":progress}}`
 //! * `{"cmd":"subscribe"}` → the connection then receives a `state` line whenever playback or the
@@ -126,6 +127,21 @@ pub fn press(
     Press::Played
 }
 
+/// Press a sound by id using the published library (for callers outside the UI thread).
+pub fn press_id(
+    library: &SharedLibrary,
+    status: &SharedStatus,
+    tx: &pipewire::channel::Sender<Cmd>,
+    id: u64,
+) -> Result<Press, &'static str> {
+    let (sound, settings) = {
+        let lib = library.lock().unwrap();
+        (lib.sounds.iter().find(|s| s.id == id).cloned(), lib.settings)
+    };
+    let sound = sound.ok_or("unknown sound")?;
+    Ok(press(tx, status, settings, id, sound.volume, sound.clip))
+}
+
 pub fn socket_path() -> PathBuf {
     config::data_dir().join("control.sock")
 }
@@ -149,6 +165,68 @@ struct Ctx {
     status: SharedStatus,
     tx: pipewire::channel::Sender<Cmd>,
     shell: Shell,
+}
+
+const CLI_HELP: &str = "\
+Usage: pw-soundboard [OPTION]
+
+Without options the soundboard window opens (or the running one is shown).
+
+  --play SOUND    play SOUND (its number or exact title), like clicking its tile
+  --stop SOUND    stop SOUND
+  --stop-all      stop all sounds
+  --hidden        start in the system tray without opening the window
+  --help          show this help
+
+--play/--stop/--stop-all talk to the running soundboard; bind them to keys in your desktop's
+keyboard settings for global shortcuts.";
+
+/// Handle command-line actions that are sent to a running instance. Returns the exit code, or
+/// None to start the app normally.
+pub fn run_cli(args: &[String]) -> Option<i32> {
+    let target = |s: &str| match s.parse::<u64>() {
+        Ok(id) => json!({"id": id}),
+        Err(_) => json!({"title": s}),
+    };
+    let mut req = match args.first().map(String::as_str) {
+        Some("--help" | "-h") => {
+            println!("{CLI_HELP}");
+            return Some(0);
+        }
+        Some("--stop-all") => json!({"cmd": "stop_all"}),
+        Some(flag @ ("--play" | "--stop")) => {
+            let Some(sound) = args.get(1) else {
+                eprintln!("{flag} needs a sound number or title");
+                return Some(2);
+            };
+            target(sound)
+        }
+        _ => return None,
+    };
+    if req.get("cmd").is_none() {
+        req["cmd"] = json!(if args[0] == "--play" { "press" } else { "stop" });
+    }
+    let reply = UnixStream::connect(socket_path()).and_then(|mut conn| {
+        conn.set_read_timeout(Some(Duration::from_secs(2)))?;
+        send(&mut conn, &req)?;
+        let mut line = String::new();
+        BufReader::new(conn).read_line(&mut line)?;
+        Ok(line)
+    });
+    match reply {
+        Err(_) => {
+            eprintln!("PW Soundboard is not running");
+            Some(1)
+        }
+        Ok(line) => match serde_json::from_str::<Value>(&line) {
+            Ok(v) if v["ok"] == json!(true) => Some(0),
+            Ok(v) => {
+                eprintln!("{}", v["error"].as_str().unwrap_or("failed"));
+                Some(1)
+            }
+            Err(_) => Some(1),
+        },
+    }
 }
 
 /// If another instance is running, ask it to show its window. Returns true if it did.
@@ -248,7 +326,14 @@ fn send(out: &mut UnixStream, v: &Value) -> std::io::Result<()> {
 }
 
 fn handle(cmd: &str, req: &Value, ctx: &Ctx) -> Value {
-    let id = req.get("id").and_then(Value::as_u64);
+    let id = req.get("id").and_then(Value::as_u64).or_else(|| {
+        let title = req.get("title")?.as_str()?;
+        let lib = ctx.library.lock().unwrap();
+        lib.sounds
+            .iter()
+            .find(|s| s.title.eq_ignore_ascii_case(title.trim()))
+            .map(|s| s.id)
+    });
     match (cmd, id) {
         ("list", _) => {
             let lib = ctx.library.lock().unwrap();
@@ -266,21 +351,13 @@ fn handle(cmd: &str, req: &Value, ctx: &Ctx) -> Value {
                 .collect();
             json!({"ok": true, "version": lib.version, "sounds": sounds})
         }
-        ("press", Some(id)) => {
-            let (sound, settings) = {
-                let lib = ctx.library.lock().unwrap();
-                (lib.sounds.iter().find(|s| s.id == id).cloned(), lib.settings)
-            };
-            let Some(sound) = sound else {
-                return json!({"ok": false, "error": "unknown sound"});
-            };
-            match press(&ctx.tx, &ctx.status, settings, id, sound.volume, sound.clip) {
-                Press::Played => json!({"ok": true, "result": "played"}),
-                Press::Stopped => json!({"ok": true, "result": "stopped"}),
-                Press::OutputsOff => json!({"ok": false, "error": "both outputs are off"}),
-                Press::NotReady => json!({"ok": false, "error": format!("sound is {}", sound.state)}),
-            }
-        }
+        ("press", Some(id)) => match press_id(&ctx.library, &ctx.status, &ctx.tx, id) {
+            Ok(Press::Played) => json!({"ok": true, "result": "played"}),
+            Ok(Press::Stopped) => json!({"ok": true, "result": "stopped"}),
+            Ok(Press::OutputsOff) => json!({"ok": false, "error": "both outputs are off"}),
+            Ok(Press::NotReady) => json!({"ok": false, "error": "sound is not ready"}),
+            Err(e) => json!({"ok": false, "error": e}),
+        },
         ("stop", Some(id)) => {
             let _ = ctx.tx.send(Cmd::Stop(id));
             json!({"ok": true})

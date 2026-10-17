@@ -1,6 +1,6 @@
 [package]
 name = "pw-soundboard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Soundboard for PipeWire: play sounds to your speakers and a virtual microphone"
 license = "MIT"
 edition = "2024"
@@ -11,6 +11,7 @@ crossbeam-channel = "0.5.17"
 dirs = "7.0.0"
 eframe = "0.36.2"
 egui = "0.36.2"
+evdev = "0.13.2"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp"] }
 ksni = { version = "0.3.6", default-features = false, features = ["blocking", "async-io"] }
 pipewire = { version = "0.10.1", features = ["v1_0_0"] }
